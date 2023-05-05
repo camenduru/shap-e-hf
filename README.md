@@ -1,6 +1,6 @@
 ---
 title: Shap-E
-emoji: 📉
+emoji: 🧢
 colorFrom: yellow
 colorTo: blue
 sdk: gradio
