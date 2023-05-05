@@ -1,0 +1,21 @@
+h1 {
+  text-align: center;
+}
+
+#component-0 {
+  max-width: 730px;
+  margin: auto;
+  padding-top: 1.5rem;
+}
+
+#result-1 video {
+  object-fit: scale-down;
+}
+
+#result-2 video {
+  object-fit: scale-down;
+}
+
+#prompt-container {
+  gap: 0;
+}
