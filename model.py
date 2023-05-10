@@ -1,6 +1,7 @@
 import tempfile
 
 import imageio
+from typing import Union
 import numpy as np
 import PIL.Image
 import torch
@@ -12,6 +13,7 @@ from shap_e.models.nn.camera import (DifferentiableCameraBatch,
 from shap_e.models.transmitter.base import Transmitter, VectorDecoder
 from shap_e.util.collections import AttrDict
 from shap_e.util.image_util import load_image
+from shap_e.rendering.torch_mesh import TorchMesh
 
 
 # Copied from https://github.com/openai/shap-e/blob/d99cedaea18e0989e340163dbaeb4b109fa9e8ec/shap_e/util/notebooks.py#L15-L42
@@ -65,6 +67,19 @@ def decode_latent_images(
     arr = decoded.channels.clamp(0, 255).to(torch.uint8)[0].cpu().numpy()
     return [PIL.Image.fromarray(x) for x in arr]
 
+@torch.no_grad()
+def decode_latent_mesh(
+    xm: Union[Transmitter, VectorDecoder],
+    latent: torch.Tensor,
+) -> TorchMesh:
+    decoded = xm.renderer.render_views(
+        AttrDict(cameras=create_pan_cameras(2, latent.device)),  # lowest resolution possible
+        params=(xm.encoder if isinstance(xm, Transmitter) else xm).bottleneck_to_params(
+            latent[None]
+        ),
+        options=AttrDict(rendering_mode="stf", render_with_direction=False),
+    )
+    return decoded.raw_meshes[0]
 
 class Model:
     def __init__(self):
@@ -118,6 +133,13 @@ class Model:
             s_churn=0,
         )
 
+        for i, latent in enumerate(latents):
+            t = decode_latent_mesh(self.xm, latent).tri_mesh()
+            with open(f'../example_txt_mesh_{i}.ply', 'wb') as f:
+                t.write_ply(f)
+            with open(f'../example_txt_mesh_{i}.obj', 'w') as f:
+                t.write_obj(f)
+
         cameras = create_pan_cameras(output_image_size, self.device)
         frames = decode_latent_images(self.xm,
                                       latents[0],
@@ -153,6 +175,13 @@ class Model:
             sigma_max=160,
             s_churn=0,
         )
+
+        for i, latent in enumerate(latents):
+            t = decode_latent_mesh(self.xm, latent).tri_mesh()
+            with open(f'../example_img_mesh_{i}.ply', 'wb') as f:
+                t.write_ply(f)
+            with open(f'../example_img_mesh_{i}.obj', 'w') as f:
+                t.write_obj(f)
 
         cameras = create_pan_cameras(output_image_size, self.device)
         frames = decode_latent_images(self.xm,
